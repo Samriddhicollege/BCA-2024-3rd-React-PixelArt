@@ -115,11 +115,16 @@
 }
 
 /* ── Mobile (≤700px) ── */
-@media (max-width: 700px) {
+@media (max-width: 768px) {
+  .sidebar-palette-container {
+    display: none !important;
+  }
+  
   .color-palette-container {
     padding: 0.75rem;
     min-width: unset;
     width: 100%;
+    border: 1px solid var(--border-color); /* Ensure border is visible in tooltip if needed */
   }
   .palette-grid {
     grid-template-columns: repeat(6, 1fr);
