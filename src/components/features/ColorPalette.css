@@ -74,3 +74,55 @@
   border: 1px solid var(--border-color);
   border-radius: 4px;
 }
+
+/* ── Medium desktop / laptop (~1300px) ── */
+@media (max-width: 1400px) {
+  .color-palette-container {
+    padding: 1.25rem;
+    min-width: 180px;
+  }
+  .palette-title {
+    font-size: 0.9rem;
+  }
+  .palette-grid {
+    gap: 0.4rem;
+  }
+  .custom-color-picker input[type="color"] {
+    width: 35px;
+    height: 35px;
+  }
+}
+
+/* ── Tablet / small laptop ── */
+@media (max-width: 1024px) {
+  .color-palette-container {
+    padding: 1rem;
+    min-width: 160px;
+  }
+  .palette-title {
+    font-size: 0.85rem;
+  }
+  .palette-grid {
+    gap: 0.35rem;
+  }
+  .custom-color-picker {
+    font-size: 0.8rem;
+  }
+  .custom-color-picker input[type="color"] {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* ── Mobile (≤700px) ── */
+@media (max-width: 700px) {
+  .color-palette-container {
+    padding: 0.75rem;
+    min-width: unset;
+    width: 100%;
+  }
+  .palette-grid {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.3rem;
+  }
+}
