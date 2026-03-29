@@ -14,6 +14,8 @@ const Cell = React.memo(({ y, x, color, onMouseDown, onMouseEnter }) => (
 
 const Canvas = ({ grid, onCellUpdate, onStrokeEnd }) => {
   const isMouseDownRef = useRef(false);
+  const containerRef = useRef(null);
+  const touchHandlersAttached = useRef(false);
 
   const handleMouseDown = useCallback((y, x) => {
     isMouseDownRef.current = true;
@@ -28,10 +30,53 @@ const Canvas = ({ grid, onCellUpdate, onStrokeEnd }) => {
 
   const handleMouseUp = useCallback(() => {
     if (isMouseDownRef.current) {
-        if (onStrokeEnd) onStrokeEnd();
+      if (onStrokeEnd) onStrokeEnd();
     }
     isMouseDownRef.current = false;
   }, [onStrokeEnd]);
+
+  // ── Touch support (mobile tap & drag to draw) ──
+  const getCellFromTouch = useCallback((touch) => {
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (!el || !el.id) return null;
+    const match = el.id.match(/^cell-(\d+)-(\d+)$/);
+    if (!match) return null;
+    return { y: parseInt(match[1], 10), x: parseInt(match[2], 10) };
+  }, []);
+
+  const handleTouchStart = useCallback((e) => {
+    e.preventDefault();
+    if (e.touches.length !== 1) return;
+    isMouseDownRef.current = true;
+    const cell = getCellFromTouch(e.touches[0]);
+    if (cell) onCellUpdate(cell.y, cell.x);
+  }, [onCellUpdate, getCellFromTouch]);
+
+  const handleTouchMove = useCallback((e) => {
+    e.preventDefault();
+    if (!isMouseDownRef.current || e.touches.length !== 1) return;
+    const cell = getCellFromTouch(e.touches[0]);
+    if (cell) onCellUpdate(cell.y, cell.x);
+  }, [onCellUpdate, getCellFromTouch]);
+
+  const handleTouchEnd = useCallback((e) => {
+    e.preventDefault();
+    if (isMouseDownRef.current) {
+      if (onStrokeEnd) onStrokeEnd();
+    }
+    isMouseDownRef.current = false;
+  }, [onStrokeEnd]);
+
+  // Attach touch listeners as non-passive so preventDefault works
+  const setContainerRef = useCallback((node) => {
+    if (node && !touchHandlersAttached.current) {
+      containerRef.current = node;
+      touchHandlersAttached.current = true;
+      node.addEventListener('touchstart', handleTouchStart, { passive: false });
+      node.addEventListener('touchmove', handleTouchMove, { passive: false });
+      node.addEventListener('touchend', handleTouchEnd, { passive: false });
+    }
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
 
   if (!grid || !grid.length) return null;
 
@@ -39,14 +84,15 @@ const Canvas = ({ grid, onCellUpdate, onStrokeEnd }) => {
   const cols = grid[0]?.length || 0;
 
   return (
-    <div 
+    <div
       className="canvas-container"
+      ref={setContainerRef}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
       onDragStart={(e) => e.preventDefault()}
     >
-      <div 
-        className="canvas-grid" 
+      <div
+        className="canvas-grid"
         style={{
           "--cols": cols,
           "--rows": rows,

@@ -2,13 +2,14 @@
   display: flex;
   width: 100%;
   max-width: 100%;
-  height: 75vh;
+  height: 85vh;
   /* Keeps layout stable, prevents stretching page downward */
   overflow: auto;
   padding: 1rem;
   background-color: var(--bg-color);
   border-radius: var(--radius);
   border: 1px dashed var(--secondary);
+  touch-action: none;
 }
 
 .canvas-grid {
@@ -23,10 +24,52 @@
 }
 
 .canvas-cell {
-  --cell-size: min(48px, min(80vw / var(--cols), 70vh / var(--rows)));
+  --cell-size: min(64px, min(80vw / var(--cols), 80vh / var(--rows)));
   width: max(8px, var(--cell-size));
   height: max(8px, var(--cell-size));
   background-color: transparent;
   cursor: crosshair;
   user-select: none;
+  touch-action: none;
+}
+
+/* ── Large desktop (~1900px+) — keep canvas big & proportional ── */
+@media (min-width: 1900px) {
+  .canvas-container {
+    height: 85vh;
+  }
+  .canvas-cell {
+    --cell-size: min(64px, min(75vw / var(--cols), 80vh / var(--rows)));
+  }
+}
+
+/* ── Medium desktop / laptop (~1300px) — scale down so it doesn't feel oversized ── */
+@media (max-width: 1400px) {
+  .canvas-container {
+    height: 75vh;
+  }
+  .canvas-cell {
+    --cell-size: min(48px, min(70vw / var(--cols), 70vh / var(--rows)));
+  }
+}
+
+/* ── Tablet / small laptop ── */
+@media (max-width: 1024px) {
+  .canvas-container {
+    height: 70vh;
+  }
+  .canvas-cell {
+    --cell-size: min(40px, min(80vw / var(--cols), 65vh / var(--rows)));
+  }
+}
+
+/* ── Mobile (≤700px) ── */
+@media (max-width: 700px) {
+  .canvas-container {
+    height: 60vh;
+    padding: 0.5rem;
+  }
+  .canvas-cell {
+    --cell-size: min(48px, min(92vw / var(--cols), 55vh / var(--rows)));
+  }
 }
