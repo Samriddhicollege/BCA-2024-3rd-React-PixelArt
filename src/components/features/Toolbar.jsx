@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaPaintBrush, FaEraser, FaFillDrip, FaUndo, FaRedo, FaTrash, FaSave, FaArrowsAltH, FaArrowsAltV } from 'react-icons/fa';
+import { FaPaintBrush, FaEraser, FaFillDrip, FaUndo, FaRedo, FaTrash, FaSave, FaArrowsAltH, FaArrowsAltV, FaPalette as FaPaletteIcon } from 'react-icons/fa';
+import ColorPalette from './ColorPalette';
 import './Toolbar.css';
 
 const Toolbar = ({ 
@@ -7,15 +8,18 @@ const Toolbar = ({
   onUndo, onRedo, canUndo, canRedo, 
   onClear, onSave,
   eraserSize, setEraserSize,
-  canvasWidth, canvasHeight, onWidthChange, onHeightChange
+  canvasWidth, canvasHeight, onWidthChange, onHeightChange,
+  color, onColorChange
 }) => {
   const [showEraserTip, setShowEraserTip] = useState(false);
   const [showWidthTip, setShowWidthTip] = useState(false);
   const [showHeightTip, setShowHeightTip] = useState(false);
+  const [showColorTip, setShowColorTip] = useState(false);
   
   const eraserRef = useRef(null);
   const widthRef = useRef(null);
   const heightRef = useRef(null);
+  const colorRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -27,6 +31,9 @@ const Toolbar = ({
       }
       if (heightRef.current && !heightRef.current.contains(event.target)) {
         setShowHeightTip(false);
+      }
+      if (colorRef.current && !colorRef.current.contains(event.target)) {
+        setShowColorTip(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -76,6 +83,21 @@ const Toolbar = ({
         >
           <FaFillDrip />
         </button>
+        <div className="tool-wrapper" ref={colorRef}>
+          <button 
+            className={`tool-btn color-preview-btn ${showColorTip ? 'active' : ''}`}
+            onClick={() => setShowColorTip(!showColorTip)}
+            title="Color Palette"
+          >
+            <div className="color-swatch-indicator" style={{ backgroundColor: color }} />
+            <FaPaletteIcon className="mobile-only-icon" />
+          </button>
+          {showColorTip && (
+            <div className="tool-tooltip palette-tooltip">
+              <ColorPalette color={color} onColorChange={onColorChange} />
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="toolbar-divider" />
