@@ -1,21 +1,32 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { FaPaintBrush, FaEraser, FaFillDrip, FaUndo, FaRedo, FaTrash, FaSave } from 'react-icons/fa';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { FaPaintBrush, FaEraser, FaFillDrip, FaUndo, FaRedo, FaTrash, FaSave, FaArrowsAltH, FaArrowsAltV } from 'react-icons/fa';
 import './Toolbar.css';
 
 const Toolbar = ({ 
   activeTool, setActiveTool, 
   onUndo, onRedo, canUndo, canRedo, 
   onClear, onSave,
-  eraserSize, setEraserSize
+  eraserSize, setEraserSize,
+  canvasWidth, canvasHeight, onWidthChange, onHeightChange
 }) => {
   const [showEraserTip, setShowEraserTip] = useState(false);
+  const [showWidthTip, setShowWidthTip] = useState(false);
+  const [showHeightTip, setShowHeightTip] = useState(false);
+  
   const eraserRef = useRef(null);
+  const widthRef = useRef(null);
+  const heightRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Hide tooltip if clicked outside the eraser tool wrapper
       if (eraserRef.current && !eraserRef.current.contains(event.target)) {
         setShowEraserTip(false);
+      }
+      if (widthRef.current && !widthRef.current.contains(event.target)) {
+        setShowWidthTip(false);
+      }
+      if (heightRef.current && !heightRef.current.contains(event.target)) {
+        setShowHeightTip(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -30,6 +41,9 @@ const Toolbar = ({
       setShowEraserTip(!showEraserTip);
     }
   };
+
+  const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
+
   return (
     <div className="editor-toolbar">
       <div className="toolbar-group">
@@ -62,6 +76,56 @@ const Toolbar = ({
         >
           <FaFillDrip />
         </button>
+      </div>
+
+      <div className="toolbar-divider" />
+
+      {/* Canvas Width Tooltip */}
+      <div className="toolbar-group">
+        <div className="tool-wrapper" ref={widthRef}>
+          <button
+            className={`tool-btn ${showWidthTip ? 'active' : ''}`}
+            onClick={() => { setShowWidthTip(!showWidthTip); setShowHeightTip(false); }}
+            title="Canvas Width"
+          >
+            <FaArrowsAltH />
+          </button>
+          {showWidthTip && (
+            <div className="tool-tooltip size-tooltip">
+              <label>Width: {canvasWidth}</label>
+              <input
+                type="range"
+                className="size-slider"
+                value={canvasWidth}
+                onChange={(e) => onWidthChange(Number(e.target.value))}
+                min="1" max="256"
+              />
+            </div>
+          )}
+        </div>
+        
+        {/* Canvas Height Tooltip */}
+        <div className="tool-wrapper" ref={heightRef}>
+          <button
+            className={`tool-btn ${showHeightTip ? 'active' : ''}`}
+            onClick={() => { setShowHeightTip(!showHeightTip); setShowWidthTip(false); }}
+            title="Canvas Height"
+          >
+            <FaArrowsAltV />
+          </button>
+          {showHeightTip && (
+            <div className="tool-tooltip size-tooltip">
+              <label>Height: {canvasHeight}</label>
+              <input
+                type="range"
+                className="size-slider"
+                value={canvasHeight}
+                onChange={(e) => onHeightChange(Number(e.target.value))}
+                min="1" max="256"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="toolbar-divider" />
