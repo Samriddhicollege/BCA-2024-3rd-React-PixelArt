@@ -30,7 +30,16 @@ const EditorPage = () => {
   const stateRef = useRef({ grid, undoHistory, redoHistory });
   const toolStateRef = useRef({ activeTool, color, width, height, eraserSize });
   const currentGridRef = useRef([]);
+  const canvasBufferRef = useRef([]);
   const didMutateRef = useRef(false);
+  const resizeTimeoutRef = useRef(null);
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
+    };
+  }, []);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -48,6 +57,8 @@ const EditorPage = () => {
           setWidth(art.width);
           setHeight(art.height);
           setGrid(art.grid);
+          currentGridRef.current = art.grid.map(row => [...row]);
+          canvasBufferRef.current = art.grid.map(row => [...row]);
           setCurrentId(art.id);
           setCurrentTitle(art.title);
           setUndoHistory([]);
@@ -66,6 +77,8 @@ const EditorPage = () => {
         setHeight(16);
         const newGrid = generateEmptyGrid(16, 16);
         setGrid(newGrid);
+        currentGridRef.current = newGrid.map(row => [...row]);
+        canvasBufferRef.current = newGrid.map(row => [...row]);
         // Important: Ensure the direct mutation arrays match the newly minted empty grid 
         if (currentGridRef) {
           currentGridRef.current = newGrid.map(row => [...row]);
@@ -100,7 +113,10 @@ const EditorPage = () => {
     // Mutate ref instantly to safeguard against rapid Ctrl+Z firing before React commits
     stateRef.current = { grid: prevGrid, undoHistory: newUndo, redoHistory: newRedo };
     currentGridRef.current = prevGrid.map(row => [...row]);
+    canvasBufferRef.current = prevGrid.map(row => [...row]);
 
+    setWidth(prevGrid[0]?.length || 16);
+    setHeight(prevGrid.length || 16);
     setUndoHistory(newUndo);
     setRedoHistory(newRedo);
     setGrid(prevGrid);
@@ -117,7 +133,10 @@ const EditorPage = () => {
     // Mutate ref instantly 
     stateRef.current = { grid: nextGrid, undoHistory: newUndo, redoHistory: newRedo };
     currentGridRef.current = nextGrid.map(row => [...row]);
+    canvasBufferRef.current = nextGrid.map(row => [...row]);
 
+    setWidth(nextGrid[0]?.length || 16);
+    setHeight(nextGrid.length || 16);
     setRedoHistory(newRedo);
     setUndoHistory(newUndo);
     setGrid(nextGrid);
@@ -149,22 +168,35 @@ const EditorPage = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  useEffect(() => {
-    setGrid(prevGrid => {
-      const safeWidth = Math.max(1, Math.min(256, width));
-      const safeHeight = Math.max(1, Math.min(256, height));
-
-      const newGrid = generateEmptyGrid(safeWidth, safeHeight);
-      for (let y = 0; y < Math.min(safeHeight, prevGrid.length); y++) {
-        for (let x = 0; x < Math.min(safeWidth, prevGrid[0].length); x++) {
-          newGrid[y][x] = prevGrid[y][x];
+  const handleDimensionChange = useCallback((newWidth, newHeight) => {
+    const sw = Math.max(1, Math.min(256, newWidth));
+    const sh = Math.max(1, Math.min(256, newHeight));
+    
+    // Update width/height stats instantly for responsive UI labels and sliders
+    setWidth(sw);
+    setHeight(sh);
+    
+    // Debounce the very expensive grid resize which forces a heavy React re-render of thousands of cells
+    if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
+    
+    resizeTimeoutRef.current = setTimeout(() => {
+      setGrid(prevGrid => {
+        // Use canvasBufferRef to recover pixels when scaling back up from a "trash" resize
+        const buffer = canvasBufferRef.current;
+        const newGrid = generateEmptyGrid(sw, sh);
+        
+        for (let y = 0; y < sh; y++) {
+          for (let x = 0; x < sw; x++) {
+            if (buffer[y] && buffer[y][x]) {
+              newGrid[y][x] = buffer[y][x];
+            }
+          }
         }
-      }
-      setUndoHistory([]);
-      setRedoHistory([]);
-      return newGrid;
-    });
-  }, [width, height]);
+        return newGrid;
+      });
+      setHasUnsavedChanges(true);
+    }, 200); // 200ms provides a good balance between responsiveness and smoothness
+  }, []);
 
   // Handle direct DOM mutation and ref mutation for blazing fast drawing performance (60FPS without React renders)
   const handleCellUpdate = useCallback((startY, startX) => {
@@ -240,6 +272,29 @@ const EditorPage = () => {
 
       setGrid(prevGrid => {
         const newGrid = currentGridRef.current.map(r => [...r]);
+        // Update buffer with the latest stroke data (potentially expanded)
+        // If the buffer is currently smaller than the stroke, we should expand it? 
+        // Actually, currentGridRef is already the current dimension.
+        // We ensure canvasBufferRef stays at least as large as the largest edited/loaded grid.
+        
+        const bh = Math.max(canvasBufferRef.current.length, newGrid.length);
+        const bw = Math.max(canvasBufferRef.current[0]?.length || 0, newGrid[0]?.length || 0);
+        
+        const updatedBuffer = generateEmptyGrid(bw, bh);
+        // Fill from old buffer
+        for (let y = 0; y < canvasBufferRef.current.length; y++) {
+          for (let x = 0; x < canvasBufferRef.current[0].length; x++) {
+            updatedBuffer[y][x] = canvasBufferRef.current[y][x];
+          }
+        }
+        // Overlay current grid (the most recent stroke)
+        for (let y = 0; y < newGrid.length; y++) {
+          for (let x = 0; x < newGrid[0].length; x++) {
+            updatedBuffer[y][x] = newGrid[y][x];
+          }
+        }
+        canvasBufferRef.current = updatedBuffer;
+
         setUndoHistory(history => [...history, prevGrid]);
         setRedoHistory([]);
         return newGrid;
@@ -266,7 +321,7 @@ const EditorPage = () => {
         title: currentTitle,
         width,
         height,
-        grid,
+        grid: currentGridRef.current.map(row => [...row]),
         updatedAt: new Date().toISOString()
       };
 
@@ -276,7 +331,7 @@ const EditorPage = () => {
     } else {
       setIsModalOpen(true);
     }
-  }, [currentId, currentTitle, width, height, grid, setSavedArts]);
+  }, [currentId, currentTitle, width, height, setSavedArts]);
 
   useEffect(() => {
     handleSaveClickRef.current = handleSaveClick;
@@ -284,18 +339,20 @@ const EditorPage = () => {
 
   const handleSave = (title) => {
     const newId = generateId();
+    const latestGrid = currentGridRef.current.map(row => [...row]);
     const newArt = {
       id: newId,
       title,
       width,
       height,
-      grid,
+      grid: latestGrid,
       createdAt: new Date().toISOString()
     };
     setSavedArts(prev => [newArt, ...prev]);
     setIsModalOpen(false);
     setCurrentId(newId);
     setCurrentTitle(title);
+    setGrid(latestGrid); // Sync grid state with the saved data
     setHasUnsavedChanges(false);
     toast.success(`Artwork "${title}" saved successfully!`);
     navigate(`/editor/${newId}`, { replace: true });
@@ -342,8 +399,10 @@ const EditorPage = () => {
             onSave={handleSaveClick}
             canvasWidth={width}
             canvasHeight={height}
-            onWidthChange={(v) => { setWidth(v); setHasUnsavedChanges(true); }}
-            onHeightChange={(v) => { setHeight(v); setHasUnsavedChanges(true); }}
+            onWidthChange={(v) => handleDimensionChange(v, height)}
+            onHeightChange={(v) => handleDimensionChange(width, v)}
+            color={color}
+            onColorChange={setColor}
           />
         </aside>
 
@@ -357,7 +416,7 @@ const EditorPage = () => {
           </div>
         </section>
 
-        <aside style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '300px', flexShrink: 0 }}>
+        <aside className="sidebar-palette-container" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '300px', flexShrink: 0 }}>
           <ColorPalette color={color} onColorChange={setColor} />
         </aside>
       </main>
