@@ -1,0 +1,95 @@
+.editor-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.editor-main-content {
+  display: flex;
+  flex-direction: row;
+  gap: 2rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+/* ── Landscape Optimization for Mobile (Phone) ── */
+@media (orientation: landscape) and (max-height: 550px) {
+  .editor-page-container {
+    padding: 0.5rem !important;
+    gap: 0.5rem !important;
+  }
+
+  .editor-page-container header {
+    display: none !important; /* Hide header to save vertical space */
+  }
+
+  .editor-main-content {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 0.5rem !important;
+    align-items: stretch !important;
+    height: calc(100vh - 1rem);
+  }
+
+  .editor-main-content aside:first-child {
+    width: auto !important;
+    flex-shrink: 0;
+  }
+
+  .editor-section {
+    flex: 1 !important;
+    height: 100% !important;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+
+  .editor-section .canvas-container {
+    height: 100% !important;
+    max-height: 100% !important;
+  }
+
+  .sidebar-palette-container {
+    display: none !important; /* Always hide sidebar palette in landscape mobile */
+  }
+}
+
+/* Ensure toolbar works on short screens in landscape */
+@media (orientation: landscape) and (max-height: 550px) {
+  .editor-toolbar {
+    flex-direction: column !important;
+    padding: 0.25rem !important;
+    gap: 0.25rem !important;
+    width: auto !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: visible !important;
+  }
+
+  .toolbar-group {
+    flex-direction: column !important;
+    gap: 0.25rem !important;
+  }
+
+  .toolbar-divider {
+    width: 80% !important;
+    height: 1px !important;
+    margin: 0.25rem 0 !important;
+  }
+
+  .tool-btn {
+    padding: 0.4rem !important;
+    font-size: 1rem !important;
+  }
+
+  .tool-tooltip {
+    left: calc(100% + 5px) !important;
+    top: 50% !important;
+    bottom: auto !important;
+    transform: translateY(-50%) !important;
+  }
+}

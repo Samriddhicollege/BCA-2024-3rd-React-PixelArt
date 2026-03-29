@@ -8,6 +8,7 @@ import Toolbar from '../components/features/Toolbar';
 import ColorPalette from '../components/features/ColorPalette';
 import SaveModal from '../components/features/SaveModal';
 import { FaPalette } from 'react-icons/fa';
+import './EditorPage.css';
 
 const EditorPage = () => {
   const [width, setWidth] = useState(16);
@@ -359,7 +360,7 @@ const EditorPage = () => {
   };
 
   return (
-    <div style={{ padding: '2rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
+    <div className="editor-page-container">
       <header style={{ textAlign: 'center' }}>
         <h1 style={{ fontSize: '3rem', fontWeight: '800', background: 'linear-gradient(to right, #60a5fa, #c084fc)', WebkitBackgroundClip: 'text', color: 'transparent', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
           <FaPalette style={{ color: '#60a5fa' }} /> Editor
@@ -384,7 +385,7 @@ const EditorPage = () => {
         </p>
       </header>
 
-      <main style={{ display: 'flex', flexDirection: 'row', gap: '2rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      <main className="editor-main-content">
         <aside style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flexShrink: 0 }}>
           <Toolbar
             activeTool={activeTool}

@@ -73,3 +73,16 @@
     --cell-size: min(48px, min(92vw / var(--cols), 55vh / var(--rows)));
   }
 }
+
+/* ── Landscape Optimization (Short screens) ── */
+@media (orientation: landscape) and (max-height: 550px) {
+  .canvas-container {
+    height: 100%;
+    max-height: calc(100vh - 1rem);
+    padding: 0.25rem;
+    border-style: solid; /* More solid feel in compact mode */
+  }
+  .canvas-cell {
+    --cell-size: min(64px, min(80vw / var(--cols), 90vh / var(--rows)));
+  }
+}
