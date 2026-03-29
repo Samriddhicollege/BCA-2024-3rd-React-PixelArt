@@ -1,8 +1,8 @@
 import React from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
-import { formatDate } from '../../utils/helpers';
-import { FaUpload, FaTrash } from 'react-icons/fa';
+import { formatDate, exportToPNG } from '../../utils/helpers';
+import { FaUpload, FaTrash, FaDownload } from 'react-icons/fa';
 import './SavedGallery.css';
 
 const SavedGallery = ({ artworks, onLoad, onDelete }) => {
@@ -45,8 +45,11 @@ const SavedGallery = ({ artworks, onLoad, onDelete }) => {
             <Button variant="primary" size="sm" onClick={() => onLoad(art)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
               <FaUpload /> Load
             </Button>
+            <Button variant="secondary" size="sm" onClick={() => exportToPNG(art.grid, art.title)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+              <FaDownload /> Export
+            </Button>
             <Button variant="danger" size="sm" onClick={() => onDelete(art.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
-              <FaTrash /> Delete
+              <FaTrash />
             </Button>
           </div>
         </Card>
