@@ -21,3 +21,33 @@ export const formatDate = (dateString) => {
     minute: '2-digit'
   }).format(new Date(dateString));
 };
+
+// Export the grid as a PNG image
+export const exportToPNG = (grid, title = 'pixel-art', scale = 20) => {
+  if (!grid || !grid.length) return;
+
+  const height = grid.length;
+  const width = grid[0].length;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  const ctx = canvas.getContext('2d');
+
+  grid.forEach((row, y) => {
+    row.forEach((color, x) => {
+      ctx.fillStyle = color || 'transparent';
+      if (color === 'transparent') {
+        // Use a clear rectangle for transparent pixels
+        ctx.clearRect(x * scale, y * scale, scale, scale);
+      } else {
+        ctx.fillRect(x * scale, y * scale, scale, scale);
+      }
+    });
+  });
+
+  const link = document.createElement('a');
+  link.download = `${title.toLowerCase().replace(/\s+/g, '-')}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+};

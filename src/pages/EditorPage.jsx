@@ -43,7 +43,7 @@ const EditorPage = () => {
         // Safe manual parse ensures we can read the ID independent of reactive savedArts state
         const storedArts = JSON.parse(window.localStorage.getItem('pixel-arts') || '[]');
         const art = storedArts.find((a) => a.id === id);
-        
+
         if (art) {
           setWidth(art.width);
           setHeight(art.height);
@@ -67,7 +67,7 @@ const EditorPage = () => {
         const newGrid = generateEmptyGrid(16, 16);
         setGrid(newGrid);
         // Important: Ensure the direct mutation arrays match the newly minted empty grid 
-        if (currentGridRef) { 
+        if (currentGridRef) {
           currentGridRef.current = newGrid.map(row => [...row]);
         }
         setCurrentId(null);
@@ -92,15 +92,15 @@ const EditorPage = () => {
   const handleUndoAction = () => {
     const { grid: currentGrid, undoHistory: currentUndo, redoHistory: currentRedo } = stateRef.current;
     if (currentUndo.length === 0) return;
-    
+
     const prevGrid = currentUndo[currentUndo.length - 1];
     const newUndo = currentUndo.slice(0, -1);
     const newRedo = [currentGrid, ...currentRedo];
-    
+
     // Mutate ref instantly to safeguard against rapid Ctrl+Z firing before React commits
     stateRef.current = { grid: prevGrid, undoHistory: newUndo, redoHistory: newRedo };
     currentGridRef.current = prevGrid.map(row => [...row]);
-    
+
     setUndoHistory(newUndo);
     setRedoHistory(newRedo);
     setGrid(prevGrid);
@@ -109,15 +109,15 @@ const EditorPage = () => {
   const handleRedoAction = () => {
     const { grid: currentGrid, undoHistory: currentUndo, redoHistory: currentRedo } = stateRef.current;
     if (currentRedo.length === 0) return;
-    
+
     const nextGrid = currentRedo[0];
     const newRedo = currentRedo.slice(1);
     const newUndo = [...currentUndo, currentGrid];
-    
+
     // Mutate ref instantly 
     stateRef.current = { grid: nextGrid, undoHistory: newUndo, redoHistory: newRedo };
     currentGridRef.current = nextGrid.map(row => [...row]);
-    
+
     setRedoHistory(newRedo);
     setUndoHistory(newUndo);
     setGrid(nextGrid);
@@ -173,26 +173,26 @@ const EditorPage = () => {
 
     const targetColor = currentGridRef.current[startY][startX] || 'transparent';
     const newColor = activeTool === 'fill' ? color : activeTool === 'brush' ? color : 'transparent';
-    
+
     if (activeTool === 'fill') {
-      if (targetColor === newColor) return; 
+      if (targetColor === newColor) return;
       didMutateRef.current = true;
-      
+
       const stack = [[startY, startX]];
-      
+
       while (stack.length > 0) {
         const [cy, cx] = stack.pop();
         if (cy < 0 || cy >= height || cx < 0 || cx >= width) continue;
-        
+
         const currentColor = currentGridRef.current[cy][cx] || 'transparent';
         if (currentColor !== targetColor) continue;
-        
+
         // Mutate Memory Ref
         currentGridRef.current[cy][cx] = newColor;
         // Mutate DOM Directly
         const el = document.getElementById(`cell-${cy}-${cx}`);
         if (el) el.style.backgroundColor = newColor;
-        
+
         stack.push([cy + 1, cx]);
         stack.push([cy - 1, cx]);
         stack.push([cy, cx + 1]);
@@ -203,17 +203,17 @@ const EditorPage = () => {
         didMutateRef.current = true;
         const offset = Math.floor(eraserSize / 2);
         const evenOffset = eraserSize % 2 === 0 ? offset - 1 : offset;
-        
+
         for (let dy = -evenOffset; dy <= offset; dy++) {
           for (let dx = -evenOffset; dx <= offset; dx++) {
             const cy = startY + dy;
             const cx = startX + dx;
-            
+
             if (cy >= 0 && cy < height && cx >= 0 && cx < width) {
               const el = document.getElementById(`cell-${cy}-${cx}`);
               if (currentGridRef.current[cy][cx] !== newColor) {
-                 currentGridRef.current[cy][cx] = newColor;
-                 if (el) el.style.backgroundColor = newColor;
+                currentGridRef.current[cy][cx] = newColor;
+                if (el) el.style.backgroundColor = newColor;
               }
             }
           }
@@ -221,10 +221,10 @@ const EditorPage = () => {
       } else {
         if (targetColor === newColor) return;
         didMutateRef.current = true;
-        
+
         // Mutate Memory Ref
         currentGridRef.current[startY][startX] = newColor;
-        
+
         // Mutate DOM Directly
         const el = document.getElementById(`cell-${startY}-${startX}`);
         if (el) el.style.backgroundColor = newColor;
@@ -237,7 +237,7 @@ const EditorPage = () => {
     if (didMutateRef.current) {
       didMutateRef.current = false;
       setHasUnsavedChanges(true);
-      
+
       setGrid(prevGrid => {
         const newGrid = currentGridRef.current.map(r => [...r]);
         setUndoHistory(history => [...history, prevGrid]);
@@ -269,7 +269,7 @@ const EditorPage = () => {
         grid,
         updatedAt: new Date().toISOString()
       };
-      
+
       setSavedArts(prev => prev.map(art => art.id === currentId ? { ...art, ...updatedArt } : art));
       setHasUnsavedChanges(false);
       toast.success(`Artwork "${currentTitle}" saved!`);
@@ -310,18 +310,18 @@ const EditorPage = () => {
         <p style={{ color: 'var(--text-muted)' }}>
           {currentTitle ? `Editing: ${currentTitle}` : 'Create beautiful pixel art securely stored in your browser'}
           {hasUnsavedChanges && (
-            <span 
+            <span
               title="Unsaved changes"
-              style={{ 
-                display: 'inline-block', 
-                width: '10px', 
-                height: '10px', 
-                backgroundColor: 'var(--primary)', 
-                borderRadius: '50%', 
+              style={{
+                display: 'inline-block',
+                width: '10px',
+                height: '10px',
+                backgroundColor: 'var(--primary)',
+                borderRadius: '50%',
                 marginLeft: '10px',
                 verticalAlign: 'middle',
                 boxShadow: '0 0 5px var(--primary)'
-              }} 
+              }}
             />
           )}
         </p>
@@ -329,8 +329,8 @@ const EditorPage = () => {
 
       <main style={{ display: 'flex', flexDirection: 'row', gap: '2rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <aside style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flexShrink: 0 }}>
-          <Toolbar 
-            activeTool={activeTool} 
+          <Toolbar
+            activeTool={activeTool}
             setActiveTool={setActiveTool}
             eraserSize={eraserSize}
             setEraserSize={setEraserSize}
@@ -340,6 +340,10 @@ const EditorPage = () => {
             canRedo={redoHistory.length > 0}
             onClear={handleClear}
             onSave={handleSaveClick}
+            canvasWidth={width}
+            canvasHeight={height}
+            onWidthChange={(v) => { setWidth(v); setHasUnsavedChanges(true); }}
+            onHeightChange={(v) => { setHeight(v); setHasUnsavedChanges(true); }}
           />
         </aside>
 
@@ -355,31 +359,6 @@ const EditorPage = () => {
 
         <aside style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '300px', flexShrink: 0 }}>
           <ColorPalette color={color} onColorChange={setColor} />
-          <div className="color-palette-container" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <h3 className="palette-title">Canvas Size</h3>
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Width (1-256)</label>
-                <input 
-                  type="number" 
-                  value={width} 
-                  onChange={(e) => { setWidth(Number(e.target.value)); setHasUnsavedChanges(true); }}
-                  min="1" max="256"
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-main)' }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Height (1-256)</label>
-                <input 
-                  type="number" 
-                  value={height} 
-                  onChange={(e) => { setHeight(Number(e.target.value)); setHasUnsavedChanges(true); }}
-                  min="1" max="256"
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-main)' }}
-                />
-              </div>
-            </div>
-          </div>
         </aside>
       </main>
 
