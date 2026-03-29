@@ -58,32 +58,37 @@
   }
 }
 
-/* Ensure toolbar works on short screens in landscape */
+/* Ensure toolbar works on short screens in landscape and doesn't clip tooltips */
 @media (orientation: landscape) and (max-height: 550px) {
   .editor-toolbar {
     flex-direction: column !important;
-    padding: 0.25rem !important;
-    gap: 0.25rem !important;
+    padding: 0.15rem !important;
+    gap: 0.15rem !important;
     width: auto !important;
-    height: 100% !important;
-    overflow-y: auto !important;
-    overflow-x: visible !important;
+    height: auto !important;
+    max-height: 100vh !important;
+    overflow: visible !important; /* Fix for tooltip clipping */
+    border-radius: 4px !important;
   }
 
   .toolbar-group {
     flex-direction: column !important;
-    gap: 0.25rem !important;
+    gap: 0.1rem !important;
   }
 
   .toolbar-divider {
-    width: 80% !important;
+    width: 60% !important;
     height: 1px !important;
-    margin: 0.25rem 0 !important;
+    margin: 0.15rem 0 !important;
+    background-color: var(--border-color) !important;
   }
 
   .tool-btn {
-    padding: 0.4rem !important;
-    font-size: 1rem !important;
+    padding: 0.3rem !important; /* Much smaller */
+    font-size: 0.9rem !important;
+    border-width: 1px !important;
+    width: 32px !important;
+    height: 32px !important;
   }
 
   .tool-tooltip {
