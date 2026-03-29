@@ -1,0 +1,32 @@
+.canvas-container {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  height: 75vh;
+  /* Keeps layout stable, prevents stretching page downward */
+  overflow: auto;
+  padding: 1rem;
+  background-color: var(--bg-color);
+  border-radius: var(--radius);
+  border: 1px dashed var(--secondary);
+}
+
+.canvas-grid {
+  display: grid;
+  gap: 1px;
+  background-color: var(--grid-border);
+  border: 1px solid var(--grid-border);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+  margin: auto;
+  /* Magic to center safely inside flex container even with scroll! */
+  width: max-content;
+}
+
+.canvas-cell {
+  --cell-size: min(48px, min(80vw / var(--cols), 70vh / var(--rows)));
+  width: max(8px, var(--cell-size));
+  height: max(8px, var(--cell-size));
+  background-color: transparent;
+  cursor: crosshair;
+  user-select: none;
+}
