@@ -15,7 +15,15 @@
   align-items: center;
   justify-content: center;
   font-size: 1.25rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+}
+
+.drawer-toggle:hover {
+  background-color: var(--secondary-hover);
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: scale(1.05);
 }
 
 .drawer-overlay {
@@ -103,24 +111,7 @@
   color: var(--primary);
 }
 
-/* Desktop Styles */
+/* Desktop Styles - removed fixed sidebar to keep toggleable drawer on all screens */
 @media (min-width: 768px) and (min-height: 550px) {
-  .drawer-toggle {
-    display: none;
-  }
-  
-  .drawer-overlay {
-    display: none;
-  }
-
-  .drawer {
-    transform: translateX(0);
-    position: sticky;
-    top: 0;
-    height: 100vh;
-  }
-
-  .drawer-close {
-    display: none;
-  }
+  /* No longer hiding toggle or forcing drawer open */
 }
