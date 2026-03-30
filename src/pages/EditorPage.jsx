@@ -172,20 +172,20 @@ const EditorPage = () => {
   const handleDimensionChange = useCallback((newWidth, newHeight) => {
     const sw = Math.max(1, Math.min(256, newWidth));
     const sh = Math.max(1, Math.min(256, newHeight));
-    
+
     // Update width/height stats instantly for responsive UI labels and sliders
     setWidth(sw);
     setHeight(sh);
-    
+
     // Debounce the very expensive grid resize which forces a heavy React re-render of thousands of cells
     if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
-    
+
     resizeTimeoutRef.current = setTimeout(() => {
       setGrid(prevGrid => {
         // Use canvasBufferRef to recover pixels when scaling back up from a "trash" resize
         const buffer = canvasBufferRef.current;
         const newGrid = generateEmptyGrid(sw, sh);
-        
+
         for (let y = 0; y < sh; y++) {
           for (let x = 0; x < sw; x++) {
             if (buffer[y] && buffer[y][x]) {
@@ -277,10 +277,10 @@ const EditorPage = () => {
         // If the buffer is currently smaller than the stroke, we should expand it? 
         // Actually, currentGridRef is already the current dimension.
         // We ensure canvasBufferRef stays at least as large as the largest edited/loaded grid.
-        
+
         const bh = Math.max(canvasBufferRef.current.length, newGrid.length);
         const bw = Math.max(canvasBufferRef.current[0]?.length || 0, newGrid[0]?.length || 0);
-        
+
         const updatedBuffer = generateEmptyGrid(bw, bh);
         // Fill from old buffer
         for (let y = 0; y < canvasBufferRef.current.length; y++) {
@@ -328,7 +328,6 @@ const EditorPage = () => {
 
       setSavedArts(prev => prev.map(art => art.id === currentId ? { ...art, ...updatedArt } : art));
       setHasUnsavedChanges(false);
-      toast.success(`Artwork "${currentTitle}" saved!`);
     } else {
       setIsModalOpen(true);
     }
@@ -404,6 +403,7 @@ const EditorPage = () => {
             onHeightChange={(v) => handleDimensionChange(width, v)}
             color={color}
             onColorChange={setColor}
+            onResetDimensions={() => handleDimensionChange(16, 16)}
           />
         </aside>
 
@@ -413,6 +413,8 @@ const EditorPage = () => {
               grid={grid}
               onCellUpdate={handleCellUpdate}
               onStrokeEnd={handleStrokeEnd}
+              activeTool={activeTool}
+              eraserSize={eraserSize}
             />
           </div>
         </section>
