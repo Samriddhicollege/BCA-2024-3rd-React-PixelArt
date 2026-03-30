@@ -9,9 +9,7 @@ const GalleryPage = () => {
   const navigate = useNavigate();
 
   const handleLoad = (art) => {
-    if (window.confirm("Loading this will take you to the editor and overwrite any unsaved canvas. Continue?")) {
-      navigate(`/editor/${art.id}`);
-    }
+    navigate(`/editor/${art.id}`);
   };
 
   const handleDelete = (id) => {
