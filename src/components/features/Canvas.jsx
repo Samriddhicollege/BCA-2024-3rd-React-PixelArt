@@ -12,9 +12,10 @@ const Cell = React.memo(({ y, x, color, onMouseDown, onMouseEnter }) => (
   />
 ));
 
-const Canvas = ({ grid, onCellUpdate, onStrokeEnd }) => {
+const Canvas = ({ grid, onCellUpdate, onStrokeEnd, activeTool, eraserSize }) => {
   const isMouseDownRef = useRef(false);
   const containerRef = useRef(null);
+  const eraserRef = useRef(null);
   const touchHandlersAttached = useRef(false);
 
   const handleMouseDown = useCallback((y, x) => {
@@ -23,10 +24,21 @@ const Canvas = ({ grid, onCellUpdate, onStrokeEnd }) => {
   }, [onCellUpdate]);
 
   const handleMouseEnter = useCallback((y, x) => {
+    if (eraserRef.current) {
+      const offset = (eraserSize % 2 === 0 ? Math.floor(eraserSize / 2) - 1 : Math.floor(eraserSize / 2));
+      const visualY = y - offset;
+      const visualX = x - offset;
+      
+      // Direct DOM mutation for 60FPS eraser visual movement
+      eraserRef.current.style.setProperty('--y', visualY);
+      eraserRef.current.style.setProperty('--x', visualX);
+      eraserRef.current.style.display = 'block';
+    }
+    
     if (isMouseDownRef.current) {
       onCellUpdate(y, x);
     }
-  }, [onCellUpdate]);
+  }, [onCellUpdate, eraserSize]);
 
   const handleMouseUp = useCallback(() => {
     if (isMouseDownRef.current) {
@@ -34,6 +46,13 @@ const Canvas = ({ grid, onCellUpdate, onStrokeEnd }) => {
     }
     isMouseDownRef.current = false;
   }, [onStrokeEnd]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (eraserRef.current) {
+      eraserRef.current.style.display = 'none';
+    }
+    handleMouseUp();
+  }, [handleMouseUp]);
 
   // ── Touch support (mobile tap & drag to draw) ──
   const getCellFromTouch = useCallback((touch) => {
@@ -88,14 +107,16 @@ const Canvas = ({ grid, onCellUpdate, onStrokeEnd }) => {
       className="canvas-container"
       ref={setContainerRef}
       onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
       onDragStart={(e) => e.preventDefault()}
     >
       <div
         className="canvas-grid"
+        data-active-tool={activeTool}
         style={{
           "--cols": cols,
           "--rows": rows,
+          "--eraser-size": eraserSize,
           gridTemplateColumns: `repeat(${cols}, 1fr)`,
           gridTemplateRows: `repeat(${rows}, 1fr)`
         }}
@@ -112,6 +133,14 @@ const Canvas = ({ grid, onCellUpdate, onStrokeEnd }) => {
             />
           ))
         ))}
+
+        {activeTool === 'eraser' && (
+          <div
+            ref={eraserRef}
+            className="eraser-visual"
+            style={{ display: 'none' }}
+          />
+        )}
       </div>
     </div>
   );

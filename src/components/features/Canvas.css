@@ -2,10 +2,12 @@
   display: flex;
   width: 100%;
   max-width: 100%;
-  height: 85vh;
+  height: calc(100vh - 180px);
+  /* Fill more vertical space */
+  min-height: 500px;
   /* Keeps layout stable, prevents stretching page downward */
   overflow: auto;
-  padding: 1rem;
+  padding: 1.5rem;
   background-color: var(--bg-color);
   border-radius: var(--radius);
   border: 1px dashed var(--secondary);
@@ -13,6 +15,8 @@
 }
 
 .canvas-grid {
+  --cell-size: min(128px, min(92vw / var(--cols), 85vh / var(--rows)));
+  --effective-cell-size: max(8px, var(--cell-size));
   display: grid;
   gap: 1px;
   background-color: var(--grid-border);
@@ -21,12 +25,12 @@
   margin: auto;
   /* Magic to center safely inside flex container even with scroll! */
   width: max-content;
+  position: relative;
 }
 
 .canvas-cell {
-  --cell-size: min(64px, min(80vw / var(--cols), 80vh / var(--rows)));
-  width: max(8px, var(--cell-size));
-  height: max(8px, var(--cell-size));
+  width: var(--effective-cell-size);
+  height: var(--effective-cell-size);
   background-color: transparent;
   cursor: crosshair;
   user-select: none;
@@ -36,20 +40,22 @@
 /* ── Large desktop (~1900px+) — keep canvas big & proportional ── */
 @media (min-width: 1900px) {
   .canvas-container {
-    height: 85vh;
+    height: calc(100vh - 200px);
   }
-  .canvas-cell {
-    --cell-size: min(64px, min(75vw / var(--cols), 80vh / var(--rows)));
+
+  .canvas-grid {
+    --cell-size: min(160px, min(95vw / var(--cols), 90vh / var(--rows)));
   }
 }
 
-/* ── Medium desktop / laptop (~1300px) — scale down so it doesn't feel oversized ── */
+/* ── Medium desktop / laptop (~1300px) — scale down slightly ── */
 @media (max-width: 1400px) {
   .canvas-container {
-    height: 75vh;
+    height: calc(100vh - 220px);
   }
-  .canvas-cell {
-    --cell-size: min(48px, min(70vw / var(--cols), 70vh / var(--rows)));
+
+  .canvas-grid {
+    --cell-size: min(96px, min(90vw / var(--cols), 85vh / var(--rows)));
   }
 }
 
@@ -58,7 +64,8 @@
   .canvas-container {
     height: 70vh;
   }
-  .canvas-cell {
+
+  .canvas-grid {
     --cell-size: min(40px, min(80vw / var(--cols), 65vh / var(--rows)));
   }
 }
@@ -69,7 +76,8 @@
     height: 60vh;
     padding: 0.5rem;
   }
-  .canvas-cell {
+
+  .canvas-grid {
     --cell-size: min(48px, min(92vw / var(--cols), 55vh / var(--rows)));
   }
 }
@@ -80,9 +88,80 @@
     height: 100%;
     max-height: calc(100vh - 1rem);
     padding: 0.25rem;
-    border-style: solid; /* More solid feel in compact mode */
+    border-style: solid;
+    /* More solid feel in compact mode */
   }
-  .canvas-cell {
+
+  .canvas-grid {
     --cell-size: min(64px, min(80vw / var(--cols), 90vh / var(--rows)));
   }
+}
+
+.eraser-visual {
+  position: absolute;
+  top: calc(var(--y) * (var(--effective-cell-size) + 1px));
+  left: calc(var(--x) * (var(--effective-cell-size) + 1px));
+  width: calc(var(--eraser-size) * (var(--effective-cell-size) + 1px) - 1px);
+  height: calc(var(--eraser-size) * (var(--effective-cell-size) + 1px) - 1px);
+
+  /* Dual-layered border for visibility on any background */
+  border: 1px dashed rgba(255, 255, 255, 0.8);
+  outline: 1px solid rgba(0, 0, 0, 0.4);
+  outline-offset: -1px;
+
+  background-color: rgba(255, 59, 48, 0.15);
+  /* Subtle pinkish eraser tint */
+  box-shadow:
+    inset 0 0 10px rgba(255, 255, 255, 0.2),
+    0 0 4px rgba(0, 0, 0, 0.3);
+
+  pointer-events: none;
+  z-index: 100;
+  border-radius: 3px;
+  display: none;
+
+  /* Eraser Icon Overlay */
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21Z"/><path d="m22 21H7"/><path d="m5 11 9 9"/></svg>');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: min(20px, 60%);
+}
+
+/* Precise center crosshair */
+.eraser-visual::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-top: 1px solid white;
+  border-left: 1px solid white;
+  transform: translate(-50%, -50%);
+  opacity: 0.8;
+  filter: drop-shadow(0 0 1px black);
+}
+
+.eraser-visual::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-bottom: 1px solid white;
+  border-right: 1px solid white;
+  transform: translate(-50%, -50%);
+  opacity: 0.8;
+  filter: drop-shadow(0 0 1px black);
+}
+
+/* Custom cursors for different tools */
+.canvas-grid[data-active-tool='fill'] .canvas-cell {
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 512 512'><path fill='%23ffffff' stroke='%23000000' stroke-width='16' d='M464 432c0 44.2-35.8 80-80 80s-80-35.8-80-80c0-14.1 3.7-27.4 10.1-38.9L464 432zM3.4 330.4C-2.5 342.3-1 356.9 7.4 367.4l119.2 119.2c10.5 10.5 24.9 12 36.9 6.1L464 330.4 181.6 48 3.4 330.4zM160 304c-17.7 0-32 14.3-32 32s14.3 32 32 32 32-14.3 32-32-14.3-32-32-32z'/></svg>") 0 32, pointer;
+}
+
+.canvas-grid[data-active-tool='eraser'] .canvas-cell {
+  cursor: none;
+  /* Hide default cursor when using the customized eraser visual */
 }
