@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaPaintBrush, FaEraser, FaFillDrip, FaUndo, FaRedo, FaTrash, FaSave, FaArrowsAltH, FaArrowsAltV, FaPalette as FaPaletteIcon } from 'react-icons/fa';
+import { FaPaintBrush, FaEraser, FaFillDrip, FaUndo, FaRedo, FaTrash, FaSave, FaArrowsAltH, FaArrowsAltV, FaPalette as FaPaletteIcon, FaSyncAlt } from 'react-icons/fa';
 import ColorPalette from './ColorPalette';
 import './Toolbar.css';
 
@@ -8,7 +8,7 @@ const Toolbar = ({
   onUndo, onRedo, canUndo, canRedo, 
   onClear, onSave,
   eraserSize, setEraserSize,
-  canvasWidth, canvasHeight, onWidthChange, onHeightChange,
+  canvasWidth, canvasHeight, onWidthChange, onHeightChange, onResetDimensions,
   color, onColorChange
 }) => {
   const [showEraserTip, setShowEraserTip] = useState(false);
@@ -148,6 +148,14 @@ const Toolbar = ({
             </div>
           )}
         </div>
+        
+        <button 
+          className="tool-btn reset-btn"
+          onClick={onResetDimensions}
+          title="Reset to 16x16"
+        >
+          <FaSyncAlt />
+        </button>
       </div>
 
       <div className="toolbar-divider" />
