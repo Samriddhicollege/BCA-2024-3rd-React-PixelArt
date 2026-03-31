@@ -9,6 +9,7 @@ import ColorPalette from '../components/features/ColorPalette';
 import LayerPanel from '../components/features/LayerPanel';
 import SaveModal from '../components/features/SaveModal';
 import { FaPalette } from 'react-icons/fa';
+import { SEED_ARTWORKS } from '../utils/seedData';
 import './EditorPage.css';
 
 const EditorPage = () => {
@@ -56,7 +57,11 @@ const EditorPage = () => {
       if (currentId !== id) {
         // Safe manual parse ensures we can read the ID independent of reactive savedArts state
         const storedArts = JSON.parse(window.localStorage.getItem('pixel-arts') || '[]');
-        const art = storedArts.find((a) => a.id === id);
+        let art = storedArts.find((a) => a.id === id);
+
+        if (!art) {
+          art = SEED_ARTWORKS.find((a) => a.id === id);
+        }
 
         if (art) {
           setWidth(art.width);
