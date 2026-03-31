@@ -6,6 +6,7 @@ import { generateEmptyGrid, generateId } from '../utils/helpers';
 import Canvas from '../components/features/Canvas';
 import Toolbar from '../components/features/Toolbar';
 import ColorPalette from '../components/features/ColorPalette';
+import LayerPanel from '../components/features/LayerPanel';
 import SaveModal from '../components/features/SaveModal';
 import { FaPalette } from 'react-icons/fa';
 import './EditorPage.css';
@@ -18,7 +19,10 @@ const EditorPage = () => {
   const [eraserSize, setEraserSize] = useState(1);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  const [grid, setGrid] = useState(() => generateEmptyGrid(16, 16));
+  const [layers, setLayers] = useState(() => [
+    { id: generateId(), name: 'Layer 1', isVisible: true, grid: generateEmptyGrid(16, 16) }
+  ]);
+  const [activeLayerId, setActiveLayerId] = useState(() => layers[0].id);
 
   const [savedArts, setSavedArts] = useLocalStorage('pixel-arts', []);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,8 +32,8 @@ const EditorPage = () => {
   const [undoHistory, setUndoHistory] = useState([]);
   const [redoHistory, setRedoHistory] = useState([]);
 
-  const stateRef = useRef({ grid, undoHistory, redoHistory });
-  const toolStateRef = useRef({ activeTool, color, width, height, eraserSize });
+  const stateRef = useRef({ layers, undoHistory, redoHistory });
+  const toolStateRef = useRef({ activeTool, color, width, height, eraserSize, activeLayerId });
   const currentGridRef = useRef([]);
   const canvasBufferRef = useRef([]);
   const didMutateRef = useRef(false);
@@ -57,9 +61,18 @@ const EditorPage = () => {
         if (art) {
           setWidth(art.width);
           setHeight(art.height);
-          setGrid(art.grid);
-          currentGridRef.current = art.grid.map(row => [...row]);
-          canvasBufferRef.current = art.grid.map(row => [...row]);
+          
+          // Migration/Fallback for old single-grid saves
+          const loadedLayers = art.layers || [
+            { id: generateId(), name: 'Layer 1', isVisible: true, grid: art.grid }
+          ];
+          setLayers(loadedLayers);
+          setActiveLayerId(loadedLayers[0].id);
+          
+          const activeGrid = loadedLayers.find(l => l.id === loadedLayers[0].id).grid;
+          currentGridRef.current = activeGrid.map(row => [...row]);
+          canvasBufferRef.current = activeGrid.map(row => [...row]);
+          
           setCurrentId(art.id);
           setCurrentTitle(art.title);
           setUndoHistory([]);
@@ -73,17 +86,17 @@ const EditorPage = () => {
       }
     } else {
       // If navigating to /editor with no ID but we were working on an art piece, wipe it cleanly to new
-      if (currentId !== null || grid.length > 16 || undoHistory.length > 0) {
+      if (currentId !== null || layers.length > 1 || undoHistory.length > 0) {
         setWidth(16);
         setHeight(16);
         const newGrid = generateEmptyGrid(16, 16);
-        setGrid(newGrid);
+        const initialLayers = [{ id: generateId(), name: 'Layer 1', isVisible: true, grid: newGrid }];
+        setLayers(initialLayers);
+        setActiveLayerId(initialLayers[0].id);
+        
         currentGridRef.current = newGrid.map(row => [...row]);
         canvasBufferRef.current = newGrid.map(row => [...row]);
-        // Important: Ensure the direct mutation arrays match the newly minted empty grid 
-        if (currentGridRef) {
-          currentGridRef.current = newGrid.map(row => [...row]);
-        }
+        
         setCurrentId(null);
         setCurrentTitle('');
         setUndoHistory([]);
@@ -95,52 +108,65 @@ const EditorPage = () => {
   }, [id, currentId, navigate]);
 
   useEffect(() => {
-    stateRef.current = { grid, undoHistory, redoHistory };
-    currentGridRef.current = grid.map(row => [...row]); // Keep mutable ref perfectly synced with React state boundary
-  }, [grid, undoHistory, redoHistory]);
+    stateRef.current = { layers, undoHistory, redoHistory };
+    const activeLayer = layers.find(l => l.id === activeLayerId);
+    if (activeLayer) {
+      currentGridRef.current = activeLayer.grid.map(row => [...row]);
+    }
+  }, [layers, undoHistory, redoHistory, activeLayerId]);
 
   useEffect(() => {
-    toolStateRef.current = { activeTool, color, width, height, eraserSize };
-  }, [activeTool, color, width, height, eraserSize]);
+    toolStateRef.current = { activeTool, color, width, height, eraserSize, activeLayerId };
+  }, [activeTool, color, width, height, eraserSize, activeLayerId]);
 
   const handleUndoAction = () => {
-    const { grid: currentGrid, undoHistory: currentUndo, redoHistory: currentRedo } = stateRef.current;
+    const { layers: currentLayers, undoHistory: currentUndo, redoHistory: currentRedo } = stateRef.current;
     if (currentUndo.length === 0) return;
 
-    const prevGrid = currentUndo[currentUndo.length - 1];
+    const prevLayers = currentUndo[currentUndo.length - 1];
     const newUndo = currentUndo.slice(0, -1);
-    const newRedo = [currentGrid, ...currentRedo];
+    const newRedo = [currentLayers, ...currentRedo];
 
     // Mutate ref instantly to safeguard against rapid Ctrl+Z firing before React commits
-    stateRef.current = { grid: prevGrid, undoHistory: newUndo, redoHistory: newRedo };
-    currentGridRef.current = prevGrid.map(row => [...row]);
-    canvasBufferRef.current = prevGrid.map(row => [...row]);
+    stateRef.current = { layers: prevLayers, undoHistory: newUndo, redoHistory: newRedo };
+    
+    const activeLayer = prevLayers.find(l => l.id === activeLayerId) || prevLayers[0];
+    currentGridRef.current = activeLayer.grid.map(row => [...row]);
+    canvasBufferRef.current = activeLayer.grid.map(row => [...row]);
 
-    setWidth(prevGrid[0]?.length || 16);
-    setHeight(prevGrid.length || 16);
+    setWidth(activeLayer.grid[0]?.length || 16);
+    setHeight(activeLayer.grid.length || 16);
     setUndoHistory(newUndo);
     setRedoHistory(newRedo);
-    setGrid(prevGrid);
+    setLayers(prevLayers);
+    if (!prevLayers.find(l => l.id === activeLayerId)) {
+      setActiveLayerId(prevLayers[0].id);
+    }
   };
 
   const handleRedoAction = () => {
-    const { grid: currentGrid, undoHistory: currentUndo, redoHistory: currentRedo } = stateRef.current;
+    const { layers: currentLayers, undoHistory: currentUndo, redoHistory: currentRedo } = stateRef.current;
     if (currentRedo.length === 0) return;
 
-    const nextGrid = currentRedo[0];
+    const nextLayers = currentRedo[0];
     const newRedo = currentRedo.slice(1);
-    const newUndo = [...currentUndo, currentGrid];
+    const newUndo = [...currentUndo, currentLayers];
 
     // Mutate ref instantly 
-    stateRef.current = { grid: nextGrid, undoHistory: newUndo, redoHistory: newRedo };
-    currentGridRef.current = nextGrid.map(row => [...row]);
-    canvasBufferRef.current = nextGrid.map(row => [...row]);
+    stateRef.current = { layers: nextLayers, undoHistory: newUndo, redoHistory: newRedo };
+    
+    const activeLayer = nextLayers.find(l => l.id === activeLayerId) || nextLayers[0];
+    currentGridRef.current = activeLayer.grid.map(row => [...row]);
+    canvasBufferRef.current = activeLayer.grid.map(row => [...row]);
 
-    setWidth(nextGrid[0]?.length || 16);
-    setHeight(nextGrid.length || 16);
+    setWidth(activeLayer.grid[0]?.length || 16);
+    setHeight(activeLayer.grid.length || 16);
     setRedoHistory(newRedo);
     setUndoHistory(newUndo);
-    setGrid(nextGrid);
+    setLayers(nextLayers);
+    if (!nextLayers.find(l => l.id === activeLayerId)) {
+      setActiveLayerId(nextLayers[0].id);
+    }
   };
 
   useEffect(() => {
@@ -181,19 +207,20 @@ const EditorPage = () => {
     if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
 
     resizeTimeoutRef.current = setTimeout(() => {
-      setGrid(prevGrid => {
-        // Use canvasBufferRef to recover pixels when scaling back up from a "trash" resize
-        const buffer = canvasBufferRef.current;
-        const newGrid = generateEmptyGrid(sw, sh);
+      setLayers(prevLayers => {
+        return prevLayers.map(layer => {
+          const buffer = layer.grid; // Or use a global buffer if needed, but per-layer is safer
+          const newGrid = generateEmptyGrid(sw, sh);
 
-        for (let y = 0; y < sh; y++) {
-          for (let x = 0; x < sw; x++) {
-            if (buffer[y] && buffer[y][x]) {
-              newGrid[y][x] = buffer[y][x];
+          for (let y = 0; y < sh; y++) {
+            for (let x = 0; x < sw; x++) {
+              if (buffer[y] && buffer[y][x]) {
+                newGrid[y][x] = buffer[y][x];
+              }
             }
           }
-        }
-        return newGrid;
+          return { ...layer, grid: newGrid };
+        });
       });
       setHasUnsavedChanges(true);
     }, 200); // 200ms provides a good balance between responsiveness and smoothness
@@ -201,7 +228,7 @@ const EditorPage = () => {
 
   // Handle direct DOM mutation and ref mutation for blazing fast drawing performance (60FPS without React renders)
   const handleCellUpdate = useCallback((startY, startX) => {
-    const { activeTool, color, width, height, eraserSize } = toolStateRef.current;
+    const { activeTool, color, width, height, eraserSize, activeLayerId } = toolStateRef.current;
     if (!currentGridRef.current[startY]) return;
 
     const targetColor = currentGridRef.current[startY][startX] || 'transparent';
@@ -223,7 +250,7 @@ const EditorPage = () => {
         // Mutate Memory Ref
         currentGridRef.current[cy][cx] = newColor;
         // Mutate DOM Directly
-        const el = document.getElementById(`cell-${cy}-${cx}`);
+        const el = document.getElementById(`cell-${activeLayerId}-${cy}-${cx}`);
         if (el) el.style.backgroundColor = newColor;
 
         stack.push([cy + 1, cx]);
@@ -243,7 +270,7 @@ const EditorPage = () => {
             const cx = startX + dx;
 
             if (cy >= 0 && cy < height && cx >= 0 && cx < width) {
-              const el = document.getElementById(`cell-${cy}-${cx}`);
+              const el = document.getElementById(`cell-${activeLayerId}-${cy}-${cx}`);
               if (currentGridRef.current[cy][cx] !== newColor) {
                 currentGridRef.current[cy][cx] = newColor;
                 if (el) el.style.backgroundColor = newColor;
@@ -259,7 +286,7 @@ const EditorPage = () => {
         currentGridRef.current[startY][startX] = newColor;
 
         // Mutate DOM Directly
-        const el = document.getElementById(`cell-${startY}-${startX}`);
+        const el = document.getElementById(`cell-${activeLayerId}-${startY}-${startX}`);
         if (el) el.style.backgroundColor = newColor;
       }
     }
@@ -271,46 +298,70 @@ const EditorPage = () => {
       didMutateRef.current = false;
       setHasUnsavedChanges(true);
 
-      setGrid(prevGrid => {
-        const newGrid = currentGridRef.current.map(r => [...r]);
-        // Update buffer with the latest stroke data (potentially expanded)
-        // If the buffer is currently smaller than the stroke, we should expand it? 
-        // Actually, currentGridRef is already the current dimension.
-        // We ensure canvasBufferRef stays at least as large as the largest edited/loaded grid.
-
-        const bh = Math.max(canvasBufferRef.current.length, newGrid.length);
-        const bw = Math.max(canvasBufferRef.current[0]?.length || 0, newGrid[0]?.length || 0);
-
-        const updatedBuffer = generateEmptyGrid(bw, bh);
-        // Fill from old buffer
-        for (let y = 0; y < canvasBufferRef.current.length; y++) {
-          for (let x = 0; x < canvasBufferRef.current[0].length; x++) {
-            updatedBuffer[y][x] = canvasBufferRef.current[y][x];
+      setLayers(prevLayers => {
+        const newLayers = prevLayers.map(layer => {
+          if (layer.id === activeLayerId) {
+            return { ...layer, grid: currentGridRef.current.map(r => [...r]) };
           }
-        }
-        // Overlay current grid (the most recent stroke)
-        for (let y = 0; y < newGrid.length; y++) {
-          for (let x = 0; x < newGrid[0].length; x++) {
-            updatedBuffer[y][x] = newGrid[y][x];
-          }
-        }
-        canvasBufferRef.current = updatedBuffer;
+          return layer;
+        });
 
-        setUndoHistory(history => [...history, prevGrid]);
+        setUndoHistory(history => [...history, prevLayers]);
         setRedoHistory([]);
-        return newGrid;
+        return newLayers;
       });
     }
-  }, []);
+  }, [activeLayerId]);
 
-  const handleClear = () => {
-    if (window.confirm("Are you sure you want to clear the canvas?")) {
-      setUndoHistory(h => [...h, grid]);
+  const handleClear = useCallback(() => {
+    if (window.confirm("Are you sure you want to clear the active layer?")) {
+      setUndoHistory(h => [...h, layers]);
       setRedoHistory([]);
-      setGrid(generateEmptyGrid(width, height));
+      setLayers(prev => prev.map(l => l.id === activeLayerId ? { ...l, grid: generateEmptyGrid(width, height) } : l));
       setHasUnsavedChanges(true);
     }
-  };
+  }, [layers, activeLayerId, width, height]);
+
+  const addLayer = useCallback(() => {
+    const newLayer = {
+      id: generateId(),
+      name: `Layer ${layers.length + 1}`,
+      isVisible: true,
+      grid: generateEmptyGrid(width, height)
+    };
+    setUndoHistory(h => [...h, layers]);
+    setRedoHistory([]);
+    setLayers(prev => [...prev, newLayer]);
+    setActiveLayerId(newLayer.id);
+    setHasUnsavedChanges(true);
+    toast.success("New layer added");
+  }, [layers, width, height]);
+
+  const deleteLayer = useCallback((layerId) => {
+    if (layers.length <= 1) {
+      toast.error("Cannot delete the only layer");
+      return;
+    }
+    if (window.confirm("Are you sure you want to delete this layer?")) {
+      setUndoHistory(h => [...h, layers]);
+      setRedoHistory([]);
+      const newLayers = layers.filter(l => l.id !== layerId);
+      setLayers(newLayers);
+      if (activeLayerId === layerId) {
+        setActiveLayerId(newLayers[newLayers.length - 1].id);
+      }
+      setHasUnsavedChanges(true);
+      toast.success("Layer deleted");
+    }
+  }, [layers, activeLayerId]);
+
+  const toggleLayerVisibility = useCallback((layerId) => {
+    setLayers(prev => prev.map(l => l.id === layerId ? { ...l, isVisible: !l.isVisible } : l));
+  }, []);
+
+  const renameLayer = useCallback((layerId, newName) => {
+    setLayers(prev => prev.map(l => l.id === layerId ? { ...l, name: newName } : l));
+  }, []);
 
   const handleSaveClickRef = useRef(null);
 
@@ -322,7 +373,7 @@ const EditorPage = () => {
         title: currentTitle,
         width,
         height,
-        grid: currentGridRef.current.map(row => [...row]),
+        layers: layers.map(l => l.id === activeLayerId ? { ...l, grid: currentGridRef.current.map(row => [...row]) } : l),
         updatedAt: new Date().toISOString()
       };
 
@@ -339,20 +390,20 @@ const EditorPage = () => {
 
   const handleSave = (title) => {
     const newId = generateId();
-    const latestGrid = currentGridRef.current.map(row => [...row]);
+    const updatedLayers = layers.map(l => l.id === activeLayerId ? { ...l, grid: currentGridRef.current.map(row => [...row]) } : l);
     const newArt = {
       id: newId,
       title,
       width,
       height,
-      grid: latestGrid,
+      layers: updatedLayers,
       createdAt: new Date().toISOString()
     };
     setSavedArts(prev => [newArt, ...prev]);
     setIsModalOpen(false);
     setCurrentId(newId);
     setCurrentTitle(title);
-    setGrid(latestGrid); // Sync grid state with the saved data
+    setLayers(updatedLayers); // Sync grid state with the saved data
     setHasUnsavedChanges(false);
     toast.success(`Artwork "${title}" saved successfully!`);
     navigate(`/editor/${newId}`, { replace: true });
@@ -410,7 +461,8 @@ const EditorPage = () => {
         <section className="editor-section" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: '300px' }}>
           <div style={{ width: '100%', overflowX: 'auto', display: 'flex', justifyContent: 'center' }}>
             <Canvas
-              grid={grid}
+              layers={layers}
+              activeLayerId={activeLayerId}
               onCellUpdate={handleCellUpdate}
               onStrokeEnd={handleStrokeEnd}
               activeTool={activeTool}
@@ -421,6 +473,15 @@ const EditorPage = () => {
 
         <aside className="sidebar-palette-container" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '300px', flexShrink: 0 }}>
           <ColorPalette color={color} onColorChange={setColor} />
+          <LayerPanel
+            layers={layers}
+            activeLayerId={activeLayerId}
+            onSelectLayer={setActiveLayerId}
+            onAddLayer={addLayer}
+            onDeleteLayer={deleteLayer}
+            onToggleVisibility={toggleLayerVisibility}
+            onRenameLayer={renameLayer}
+          />
         </aside>
       </main>
 
