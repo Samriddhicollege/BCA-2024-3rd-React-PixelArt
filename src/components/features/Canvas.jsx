@@ -1,50 +1,92 @@
 import React, { useRef, useCallback } from 'react';
 import './Canvas.css';
 
-const Cell = React.memo(({ y, x, color, onMouseDown, onMouseEnter }) => (
+const Cell = React.memo(({ y, x, color, layerId }) => (
   <div
-    id={`cell-${y}-${x}`}
+    id={layerId ? `cell-${layerId}-${y}-${x}` : `cell-${y}-${x}`}
     className="canvas-cell"
     style={{ backgroundColor: color || 'transparent' }}
-    onMouseDown={() => onMouseDown(y, x)}
-    onMouseEnter={() => onMouseEnter(y, x)}
-    onDragStart={(e) => e.preventDefault()}
   />
 ));
 
-const Canvas = ({ grid, onCellUpdate, onStrokeEnd, activeTool, eraserSize }) => {
+const LayerGrid = React.memo(({ layer, rows, cols, gridStyle }) => (
+  <div className="canvas-grid layer-grid" style={gridStyle}>
+    {layer.grid.map((row, y) => (
+      row.map((color, x) => (
+        <Cell
+          key={`${y}-${x}`}
+          y={y}
+          x={x}
+          color={color}
+          layerId={layer.id}
+        />
+      ))
+    ))}
+  </div>
+));
+
+const Canvas = ({ layers, activeLayerId, onCellUpdate, onStrokeEnd, activeTool, eraserSize }) => {
   const isMouseDownRef = useRef(false);
   const containerRef = useRef(null);
   const eraserRef = useRef(null);
+  const interactionRef = useRef(null);
+  const lastCellRef = useRef({ y: -1, x: -1 });
   const touchHandlersAttached = useRef(false);
 
-  const handleMouseDown = useCallback((y, x) => {
-    isMouseDownRef.current = true;
-    onCellUpdate(y, x);
-  }, [onCellUpdate]);
-
-  const handleMouseEnter = useCallback((y, x) => {
-    if (eraserRef.current) {
-      const offset = (eraserSize % 2 === 0 ? Math.floor(eraserSize / 2) - 1 : Math.floor(eraserSize / 2));
-      const visualY = y - offset;
-      const visualX = x - offset;
-      
-      // Direct DOM mutation for 60FPS eraser visual movement
-      eraserRef.current.style.setProperty('--y', visualY);
-      eraserRef.current.style.setProperty('--x', visualX);
-      eraserRef.current.style.display = 'block';
-    }
+  const getCoordinates = useCallback((clientX, clientY) => {
+    if (!interactionRef.current) return null;
+    const rect = interactionRef.current.getBoundingClientRect();
+    const xRatio = (clientX - rect.left) / rect.width;
+    const yRatio = (clientY - rect.top) / rect.height;
     
-    if (isMouseDownRef.current) {
-      onCellUpdate(y, x);
+    const rows = layers[0].grid.length;
+    const cols = layers[0].grid[0].length;
+    
+    const x = Math.floor(xRatio * cols);
+    const y = Math.floor(yRatio * rows);
+    
+    if (x >= 0 && x < cols && y >= 0 && y < rows) {
+      return { x, y };
     }
-  }, [onCellUpdate, eraserSize]);
+    return null;
+  }, [layers]);
+
+  const handleMouseDown = useCallback((e) => {
+    if (e.button !== 0) return; // Only left click
+    const coords = getCoordinates(e.clientX, e.clientY);
+    if (coords) {
+      isMouseDownRef.current = true;
+      lastCellRef.current = coords;
+      onCellUpdate(coords.y, coords.x);
+    }
+  }, [getCoordinates, onCellUpdate]);
+
+  const handleMouseMove = useCallback((e) => {
+    const coords = getCoordinates(e.clientX, e.clientY);
+    
+    if (coords) {
+      if (eraserRef.current) {
+        const offset = (eraserSize % 2 === 0 ? Math.floor(eraserSize / 2) - 1 : Math.floor(eraserSize / 2));
+        eraserRef.current.style.setProperty('--y', coords.y - offset);
+        eraserRef.current.style.setProperty('--x', coords.x - offset);
+        eraserRef.current.style.display = 'block';
+      }
+      
+      if (isMouseDownRef.current && (coords.x !== lastCellRef.current.x || coords.y !== lastCellRef.current.y)) {
+        lastCellRef.current = coords;
+        onCellUpdate(coords.y, coords.x);
+      }
+    } else if (eraserRef.current) {
+      eraserRef.current.style.display = 'none';
+    }
+  }, [getCoordinates, onCellUpdate, eraserSize]);
 
   const handleMouseUp = useCallback(() => {
     if (isMouseDownRef.current) {
       if (onStrokeEnd) onStrokeEnd();
     }
     isMouseDownRef.current = false;
+    lastCellRef.current = { y: -1, x: -1 };
   }, [onStrokeEnd]);
 
   const handleMouseLeave = useCallback(() => {
@@ -54,93 +96,94 @@ const Canvas = ({ grid, onCellUpdate, onStrokeEnd, activeTool, eraserSize }) => 
     handleMouseUp();
   }, [handleMouseUp]);
 
-  // ── Touch support (mobile tap & drag to draw) ──
-  const getCellFromTouch = useCallback((touch) => {
-    const el = document.elementFromPoint(touch.clientX, touch.clientY);
-    if (!el || !el.id) return null;
-    const match = el.id.match(/^cell-(\d+)-(\d+)$/);
-    if (!match) return null;
-    return { y: parseInt(match[1], 10), x: parseInt(match[2], 10) };
-  }, []);
-
   const handleTouchStart = useCallback((e) => {
-    e.preventDefault();
     if (e.touches.length !== 1) return;
-    isMouseDownRef.current = true;
-    const cell = getCellFromTouch(e.touches[0]);
-    if (cell) onCellUpdate(cell.y, cell.x);
-  }, [onCellUpdate, getCellFromTouch]);
+    const coords = getCoordinates(e.touches[0].clientX, e.touches[0].clientY);
+    if (coords) {
+      isMouseDownRef.current = true;
+      lastCellRef.current = coords;
+      onCellUpdate(coords.y, coords.x);
+    }
+  }, [getCoordinates, onCellUpdate]);
 
   const handleTouchMove = useCallback((e) => {
-    e.preventDefault();
     if (!isMouseDownRef.current || e.touches.length !== 1) return;
-    const cell = getCellFromTouch(e.touches[0]);
-    if (cell) onCellUpdate(cell.y, cell.x);
-  }, [onCellUpdate, getCellFromTouch]);
+    const coords = getCoordinates(e.touches[0].clientX, e.touches[0].clientY);
+    if (coords && (coords.x !== lastCellRef.current.x || coords.y !== lastCellRef.current.y)) {
+      lastCellRef.current = coords;
+      onCellUpdate(coords.y, coords.x);
+    }
+  }, [getCoordinates, onCellUpdate]);
 
   const handleTouchEnd = useCallback((e) => {
-    e.preventDefault();
-    if (isMouseDownRef.current) {
-      if (onStrokeEnd) onStrokeEnd();
-    }
-    isMouseDownRef.current = false;
-  }, [onStrokeEnd]);
+    handleMouseUp();
+  }, [handleMouseUp]);
 
-  // Attach touch listeners as non-passive so preventDefault works
   const setContainerRef = useCallback((node) => {
     if (node && !touchHandlersAttached.current) {
       containerRef.current = node;
       touchHandlersAttached.current = true;
-      node.addEventListener('touchstart', handleTouchStart, { passive: false });
-      node.addEventListener('touchmove', handleTouchMove, { passive: false });
-      node.addEventListener('touchend', handleTouchEnd, { passive: false });
+      node.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+      node.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
     }
-  }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
+  }, []);
 
-  if (!grid || !grid.length) return null;
+  if (!layers || !layers.length) return null;
 
-  const rows = grid.length;
-  const cols = grid[0]?.length || 0;
+  const rows = layers[0].grid.length;
+  const cols = layers[0].grid[0]?.length || 0;
+
+  const gridStyle = {
+    "--cols": cols,
+    "--rows": rows,
+    "--eraser-size": eraserSize,
+    gridTemplateColumns: `repeat(${cols}, 1fr)`,
+    gridTemplateRows: `repeat(${rows}, 1fr)`
+  };
 
   return (
     <div
       className="canvas-container"
       ref={setContainerRef}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
       onDragStart={(e) => e.preventDefault()}
     >
-      <div
-        className="canvas-grid"
-        data-active-tool={activeTool}
-        style={{
-          "--cols": cols,
-          "--rows": rows,
-          "--eraser-size": eraserSize,
-          gridTemplateColumns: `repeat(${cols}, 1fr)`,
-          gridTemplateRows: `repeat(${rows}, 1fr)`
-        }}
-      >
-        {grid.map((row, y) => (
-          row.map((color, x) => (
-            <Cell
-              key={`${y}-${x}`}
-              y={y}
-              x={x}
-              color={color}
-              onMouseDown={handleMouseDown}
-              onMouseEnter={handleMouseEnter}
+      <div className="canvas-layers-stack" style={gridStyle}>
+        {layers.map((layer) => (
+          layer.isVisible && (
+            <LayerGrid 
+              key={layer.id} 
+              layer={layer} 
+              rows={rows} 
+              cols={cols} 
+              gridStyle={gridStyle} 
             />
-          ))
+          )
         ))}
 
-        {activeTool === 'eraser' && (
-          <div
-            ref={eraserRef}
-            className="eraser-visual"
-            style={{ display: 'none' }}
-          />
-        )}
+        <div
+          ref={interactionRef}
+          className="canvas-grid interaction-overlay"
+          data-active-tool={activeTool}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          style={{
+            width: `calc(${cols} * (var(--effective-cell-size) + 1px) - 1px)`,
+            height: `calc(${rows} * (var(--effective-cell-size) + 1px) - 1px)`
+          }}
+        >
+          {activeTool === 'eraser' && (
+            <div
+              ref={eraserRef}
+              className="eraser-visual"
+              style={{ display: 'none' }}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
