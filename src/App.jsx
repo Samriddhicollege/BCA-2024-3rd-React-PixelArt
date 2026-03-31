@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Drawer from './components/layout/Drawer';
@@ -18,6 +18,7 @@ function App() {
           <Route path="/editor" element={<EditorPage />} />
           <Route path="/editor/:id" element={<EditorPage />} />
           <Route path="/gallery" element={<GalleryPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </div>
