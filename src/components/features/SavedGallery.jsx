@@ -1,7 +1,7 @@
 import React from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
-import { formatDate, exportToPNG } from '../../utils/helpers';
+import { formatDate, exportToPNG, compositeLayers } from '../../utils/helpers';
 import { FaUpload, FaTrash, FaDownload } from 'react-icons/fa';
 import './SavedGallery.css';
 
@@ -19,23 +19,30 @@ const SavedGallery = ({ artworks, onLoad, onDelete }) => {
       {artworks.map((art) => (
         <Card key={art.id} className="gallery-card">
           <div className="gallery-preview">
-            <div 
-              className="preview-grid"
-              style={{
-                gridTemplateColumns: `repeat(${art.grid[0]?.length || 1}, 1fr)`,
-                gridTemplateRows: `repeat(${art.grid.length}, 1fr)`
-              }}
-            >
-              {art.grid.map((row, y) => 
-                row.map((color, x) => (
-                  <div 
-                    key={`${y}-${x}`}
-                    className="preview-cell"
-                    style={{ backgroundColor: color || 'transparent' }}
-                  />
-                ))
-              )}
-            </div>
+            {(() => {
+              const compositeGrid = art.layers ? compositeLayers(art.layers) : art.grid;
+              const rows = compositeGrid.length;
+              const cols = compositeGrid[0]?.length || 1;
+              return (
+                <div 
+                  className="preview-grid"
+                  style={{
+                    gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                    gridTemplateRows: `repeat(${rows}, 1fr)`
+                  }}
+                >
+                  {compositeGrid.map((row, y) => 
+                    row.map((color, x) => (
+                      <div 
+                        key={`${y}-${x}`}
+                        className="preview-cell"
+                        style={{ backgroundColor: color || 'transparent' }}
+                      />
+                    ))
+                  )}
+                </div>
+              );
+            })()}
           </div>
           <div className="gallery-info">
             <h4 className="gallery-title" title={art.title}>{art.title}</h4>
@@ -45,7 +52,7 @@ const SavedGallery = ({ artworks, onLoad, onDelete }) => {
             <Button variant="primary" size="sm" onClick={() => onLoad(art)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
               <FaUpload /> Load
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => exportToPNG(art.grid, art.title)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+            <Button variant="secondary" size="sm" onClick={() => exportToPNG(art.layers || art.grid, art.title)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
               <FaDownload /> Export
             </Button>
             <Button variant="danger" size="sm" onClick={() => onDelete(art.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
