@@ -4,7 +4,7 @@ const createGridFromStrings = (strings, colorMap) => {
   const height = strings.length;
   const width = strings[0].length;
   const grid = generateEmptyGrid(width, height);
-  
+
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const char = strings[y][x];
@@ -94,6 +94,24 @@ const CREEPER_STRINGS = [
   "                "
 ];
 
+const PIG_STRINGS = [
+  "                ",
+  "  ############  ",
+  " ###### ####### ",
+  " ###### ####### ",
+  "  ############  ",
+  "  ## #PP# ###   ",
+  "  ## #PP# ###   ",
+  "  ############  ",
+  "  ############  ",
+  "   ##########   ",
+  "   ##  ##  ##   ",
+  "   ##  ##  ##   ",
+  "   ##  ##  ##   ",
+  "   ##  ##  ##   ",
+  "                ",
+  "                "
+];
 export const SEED_ARTWORKS = [
   {
     id: 'seed-heart-001',

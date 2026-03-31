@@ -12,8 +12,6 @@ dist
 dist-ssr
 *.local
 
-README.md
-readme.md
 app.md
 
 # Editor directories and files
